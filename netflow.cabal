@@ -1,0 +1,74 @@
+name:                netflow
+version:             0.1.0.0
+synopsis:            NetFlow v9 Capture Tool
+homepage:            http://github.com/techlib/ntk-flow
+license:             MIT
+license-file:        LICENSE
+author:              Jan Dvořák
+maintainer:          mordae@mordae.eu
+category:            Data
+build-type:          Simple
+cabal-version:       >=1.10
+
+description:
+  This package implements a tool that captures NetFlow v9 UDP packets
+  and stores them in plain text files for future analysis.
+
+Executable nf
+  default-language:    Haskell2010
+  ghc-options:         -Wall -Werror -Wcompat
+  hs-source-dirs:      nf
+  main-is:             Main.hs
+
+  build-depends:       base
+                     , netflow
+                     , text
+                     , time
+                     , network
+                     , bytestring
+                     , base-prelude
+                     , cereal
+                     , pipes
+                     , iproute
+
+Library
+  exposed-modules:     Network.Flow.Receive
+                     , Network.Flow.V9
+                     , Network.Flow.V9.Decode
+                     , Data.MAC
+  default-language:    Haskell2010
+  ghc-options:         -Wall -Werror -Wcompat
+  hs-source-dirs:      lib
+
+  build-depends:       base
+                     , text
+                     , time
+                     , network
+                     , bytestring
+                     , base-prelude
+                     , cereal
+                     , pipes
+                     , iproute
+                     , transformers
+                     , containers
+
+Test-Suite spec
+  default-language:    Haskell2010
+  ghc-options:         -Wall -Werror -Wcompat
+  type:	               exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+
+  build-depends:       base
+                     , netflow
+                     , text
+                     , time
+                     , network
+                     , bytestring
+                     , base-prelude
+                     , cereal
+                     , pipes
+                     , hspec
+                     , QuickCheck
+
+-- EOF
