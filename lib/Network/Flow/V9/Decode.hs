@@ -24,6 +24,8 @@ module Network.Flow.V9.Decode
   import Data.ByteString (ByteString, unpack)
   import Data.Serialize.Get
 
+  import Network.Flow.V9.Fields
+
 
   data Flowset
     = TemplateFlowset
@@ -55,13 +57,6 @@ module Network.Flow.V9.Decode
     , flowTemplate :: !Word16
     , flowScope    :: Word
     , flowFields   :: [Field] }
-    deriving (Show)
-
-
-  data Field = Field
-    { fieldNumber :: !Word16
-    , fieldValue  :: Word
-    , fieldBytes  :: ByteString }
     deriving (Show)
 
 
@@ -126,10 +121,10 @@ module Network.Flow.V9.Decode
   getField :: Type -> Get Field
   getField (Type number size) = do
     bytes <- getBytes (fromIntegral size)
-    return (Field number (roll bytes) bytes)
+    return (decodeField number bytes)
 
 
-  roll :: ByteString -> Word
+  roll :: (Integral a, Bits a) => ByteString -> a
   roll = foldl' (\c n -> c `shiftL` 8 + n) 0 . map fromIntegral . unpack
 
 

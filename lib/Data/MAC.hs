@@ -25,4 +25,9 @@ where
       where (a, b, c, d, e, f) = macOctets mac
 
 
+  toMAC :: [Word8] -> MAC
+  toMAC [a, b, c, d, e, f] = MAC (a, b, c, d, e, f)
+  toMAC _ = error "invalid number of MAC octets"
+
+
 -- vim:set ft=haskell sw=2 ts=2 et:

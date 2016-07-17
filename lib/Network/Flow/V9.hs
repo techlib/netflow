@@ -28,11 +28,6 @@ module Network.Flow.V9
   import Data.Serialize.Get
   import Pipes
 
-  {-
-  import Data.IP
-  import Data.MAC
-  -}
-
   import Network.Flow.V9.Decode
 
 
@@ -50,45 +45,6 @@ module Network.Flow.V9
     , recordSource   :: !Word32
     , recordFlowsets :: [Flowset] }
     deriving (Show)
-
-
-  {-
-  data FlowInfo = FlowInfo
-    { iInBytes    :: Maybe Word
-    , iInPkts     :: Maybe Word
-    , iFlows      :: Maybe Word
-    , iProtocol   :: Maybe Word8
-    , iTcpFlags   :: Maybe Word8
-    , iSrcAddr    :: Maybe IP
-    , iSrcPrefix  :: Maybe Word8
-    , iSrcPort    :: Maybe Word16
-    , iDstAddr    :: Maybe IP
-    , iDstPrefix  :: Maybe Word16
-    , iDstPort    :: Maybe Word16
-    , iNextHop    :: Maybe IP
-    , iMulPkts    :: Maybe Word
-    , iMulBytes   :: Maybe Word
-    , iOutBytes   :: Maybe Word
-    , iOutPkts    :: Maybe Word
-    , iMinPktLen  :: Maybe Word16
-    , iMaxPktLen  :: Maybe Word16
-    , iSrcMac     :: Maybe MAC
-    , iDstMac     :: Maybe MAC
-    , iSrcVlan    :: Maybe Word16
-    , iDstVlan    :: Maybe Word16
-    , iProtoVers  :: Maybe Word8
-    , iDirection  :: Maybe Direction
-    , iInDstMac   :: Maybe MAC
-    , iOutSrcMac  :: Maybe MAC
-    , iIfName     :: Maybe ByteString
-    , iIfDesc     :: Maybe ByteString
-    , iSampler    :: Maybe ByteString }
-    deriving (Show)
-
-
-  data Direction = Ingress | Egress
-    deriving (Show, Eq, Enum)
-  -}
 
 
   decodeRecords :: Pipe (ByteString, SockAddr) Record IO ()

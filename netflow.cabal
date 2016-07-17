@@ -35,6 +35,7 @@ Library
   exposed-modules:     Network.Flow.Receive
                      , Network.Flow.V9
                      , Network.Flow.V9.Decode
+                     , Network.Flow.V9.Fields
                      , Data.MAC
   default-language:    Haskell2010
   ghc-options:         -Wall -Werror -Wcompat
