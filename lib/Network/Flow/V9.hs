@@ -23,7 +23,7 @@ module Network.Flow.V9
 ) where
   import BasePrelude hiding (yield, length)
 
-  import Data.ByteString (ByteString)
+  import Data.ByteString (ByteString, unpack)
   import Network.Socket (SockAddr)
   import Data.Serialize.Get
   import Pipes
@@ -153,11 +153,12 @@ module Network.Flow.V9
       getNested getFlowsetLength $ do
         template' <- getWord16be
         scopeLen' <- getWord16be
-        count     <- getWord16be
-        types'    <- getTypes (count `shiftR` 2)
+        typesLen' <- getWord16be
+        scope'    <- getBytes (fromIntegral scopeLen')
+        types'    <- getTypes (typesLen' `shiftR` 2)
 
         remaining >>= skip
-        return $ TemplateFlowset [Template template' scopeLen' types']
+        return $ TemplateFlowset [Template template' (roll scope') types']
 
 
   getFlowsetLength :: Get Int
@@ -198,6 +199,10 @@ module Network.Flow.V9
         (Just flow, templates')
           -> let (more, templates'') = decodeFlowsets uptime flowsets templates'
               in (flow:more, templates'')
+
+
+  roll :: (Integral a, Bits a) => ByteString -> a
+  roll = foldl' (\c n -> c `shiftL` 8 + n) 0 . map fromIntegral . unpack
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

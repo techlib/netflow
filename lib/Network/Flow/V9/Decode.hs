@@ -21,7 +21,7 @@ module Network.Flow.V9.Decode
 , decodeFlowset
 ) where
   import BasePrelude
-  import Data.ByteString (ByteString, unpack)
+  import Data.ByteString (ByteString)
   import Data.Serialize.Get
 
   import Network.Flow.V9.Fields
@@ -40,7 +40,7 @@ module Network.Flow.V9.Decode
 
   data Template = Template
     { templateId       :: !Word16
-    , templateScopeLen :: !Word16
+    , templateScope    :: !Word
     , templateTypes    :: [Type] }
     deriving (Show)
 
@@ -73,15 +73,15 @@ module Network.Flow.V9.Decode
           -> (Nothing, templates)
 
         -- We can attempt to decode the body using this template.
-        Just (Template _ scopeLen fieldTypes)
-          -> case decodeFields scopeLen fieldTypes body of
+        Just (Template _ scope fieldTypes)
+          -> case decodeFields fieldTypes body of
               -- There is a small chance that the template is out of date,
               -- which can potentially lead to a decoding failure. Ignore.
               Nothing
                 -> (Nothing, templates)
 
               -- Produce the (mostly) decoded flowset.
-              Just (scope, fields)
+              Just fields
                 -> (Just (Flow time uptime source tid scope fields), templates)
 
 
@@ -96,18 +96,11 @@ module Network.Flow.V9.Decode
       where matching t = (templateId' == templateId t)
 
 
-  decodeFields :: Word16 -> [Type] -> ByteString -> Maybe (Word, [Field])
-  decodeFields scopeLen fieldTypes body
-    = case runGet (getBody scopeLen fieldTypes) body of
-        Left _  -> Nothing
+  decodeFields :: [Type] -> ByteString -> Maybe [Field]
+  decodeFields fieldTypes body
+    = case runGet (getFields fieldTypes) body of
+        Left _e -> Nothing
         Right r -> Just r
-
-
-  getBody :: Word16 -> [Type] -> Get (Word, [Field])
-  getBody scopeLen fieldTypes = do
-    scope  <- getBytes (fromIntegral scopeLen)
-    fields <- getFields fieldTypes
-    return (roll scope, fields)
 
 
   getFields :: [Type] -> Get [Field]
@@ -123,10 +116,6 @@ module Network.Flow.V9.Decode
   getField (Type number size) = do
     bytes <- getBytes (fromIntegral size)
     return (decodeField number bytes)
-
-
-  roll :: (Integral a, Bits a) => ByteString -> a
-  roll = foldl' (\c n -> c `shiftL` 8 + n) 0 . map fromIntegral . unpack
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
