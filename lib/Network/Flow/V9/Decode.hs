@@ -53,6 +53,7 @@ module Network.Flow.V9.Decode
 
   data Flow = Flow
     { flowTime     :: !Word32
+    , flowUptime   :: !Word32
     , flowSource   :: !Word32
     , flowTemplate :: !Word16
     , flowScope    :: Word
@@ -60,11 +61,11 @@ module Network.Flow.V9.Decode
     deriving (Show)
 
 
-  decodeFlowset :: Flowset -> [Template] -> (Maybe Flow, [Template])
-  decodeFlowset (TemplateFlowset newTemplates) templates
+  decodeFlowset :: Word32 -> Flowset -> [Template] -> (Maybe Flow, [Template])
+  decodeFlowset _ (TemplateFlowset newTemplates) templates
     = (Nothing, nubBy sameTemplateId (newTemplates <> templates))
 
-  decodeFlowset (DataFlowset tid time source body) templates
+  decodeFlowset uptime (DataFlowset tid time source body) templates
     = case findTemplate templates tid of
         -- Template not found means we have not received it yet.
         -- Since templates are sent out-of-band, we just keep going.
@@ -81,7 +82,7 @@ module Network.Flow.V9.Decode
 
               -- Produce the (mostly) decoded flowset.
               Just (scope, fields)
-                -> (Just (Flow time source tid scope fields), templates)
+                -> (Just (Flow time uptime source tid scope fields), templates)
 
 
   sameTemplateId :: Template -> Template -> Bool

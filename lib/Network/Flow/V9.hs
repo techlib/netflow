@@ -173,11 +173,11 @@ module Network.Flow.V9
   decodeFlows' :: [Template] -> Pipe Record Flow IO ()
   decodeFlows' templates = do
     -- Obtain new record to parse.
-    (Record _ _ _ _ _ flowsets) <- await
+    (Record _ uptime _ _ _ flowsets) <- await
 
     -- Decode all the flowsets, collecting both flows and templates.
     -- All flows that came after the templates used those templates.
-    let (flows, templates') = decodeFlowsets flowsets templates
+    let (flows, templates') = decodeFlowsets uptime flowsets templates
 
     -- Yield all the flows.
     for_ flows yield
@@ -186,17 +186,17 @@ module Network.Flow.V9
     decodeFlows' templates'
 
 
-  decodeFlowsets :: [Flowset] -> [Template] -> ([Flow], [Template])
-  decodeFlowsets [] templates = ([], templates)
+  decodeFlowsets :: Word32 -> [Flowset] -> [Template] -> ([Flow], [Template])
+  decodeFlowsets _ [] templates = ([], templates)
 
-  decodeFlowsets (flowset:flowsets) templates
-    = case decodeFlowset flowset templates of
+  decodeFlowsets uptime (flowset:flowsets) templates
+    = case decodeFlowset uptime flowset templates of
         (Nothing, templates')
-          -> let (more, templates'') = decodeFlowsets flowsets templates'
+          -> let (more, templates'') = decodeFlowsets uptime flowsets templates'
               in (more, templates'')
 
         (Just flow, templates')
-          -> let (more, templates'') = decodeFlowsets flowsets templates'
+          -> let (more, templates'') = decodeFlowsets uptime flowsets templates'
               in (flow:more, templates'')
 
 
