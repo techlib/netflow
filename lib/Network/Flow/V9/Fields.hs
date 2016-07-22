@@ -104,9 +104,9 @@ module Network.Flow.V9.Fields
     | MplsLabelStackSection10 BS.ByteString
     | DestinationMacAddress MAC
     | PostSourceMacAddress MAC
-    | InterfaceName String
-    | InterfaceDescription String
-    | SamplerName String
+    | InterfaceName T.Text
+    | InterfaceDescription T.Text
+    | SamplerName T.Text
     | OctetTotalCount Word64
     | PacketTotalCount Word64
     | FlagsAndSamplerId Word32
@@ -116,12 +116,12 @@ module Network.Flow.V9.Fields
     | MplsTopLabelPrefixLength Word8
     | SrcTrafficIndex Word32
     | DstTrafficIndex Word32
-    | ApplicationDescription String
+    | ApplicationDescription T.Text
     | ApplicationId BS.ByteString
-    | ApplicationName String
+    | ApplicationName T.Text
     | PostIpDiffServCodePoint Word8
     | MulticastReplicationFactor Word32
-    | ClassName String
+    | ClassName T.Text
     | ClassificationEngineId Word8
     | Layer2packetSectionOffset Word16
     | Layer2packetSectionSize Word16
@@ -145,7 +145,7 @@ module Network.Flow.V9.Fields
     | ExportingProcessId Word32
     | TemplateId Word16
     | WlanChannelId Word8
-    | WlanSSID String
+    | WlanSSID T.Text
     | FlowId Word64
     | ObservationDomainId Word32
     | FlowStartSeconds Word
@@ -234,7 +234,7 @@ module Network.Flow.V9.Fields
     | FirewallEvent Word8
     | IngressVRFID Word32
     | EgressVRFID Word32
-    | VRFname String
+    | VRFname T.Text
     | PostMplsTopLabelExp Word8
     | TcpWindowScale Word16
     | BiflowDirection Word8
@@ -245,7 +245,7 @@ module Network.Flow.V9.Fields
     | Dot1qPriority Word8
     | Dot1qCustomerVlanId Word16
     | Dot1qCustomerPriority Word8
-    | MetroEvcId String
+    | MetroEvcId T.Text
     | MetroEvcType Word8
     | PseudoWireId Word32
     | PseudoWireType Word16
@@ -282,20 +282,20 @@ module Network.Flow.V9.Fields
     | PostNATSourceIPv6Address IPv6
     | PostNATDestinationIPv6Address IPv6
     | NatPoolId Word32
-    | NatPoolName String
+    | NatPoolName T.Text
     | AnonymizationFlags Word16
     | AnonymizationTechnique Word16
     | InformationElementIndex Word16
-    | P2pTechnology String
-    | TunnelTechnology String
-    | EncryptedTechnology String
+    | P2pTechnology T.Text
+    | TunnelTechnology T.Text
+    | EncryptedTechnology T.Text
     | BgpValidityState Word8
     | IPSecSPI Word32
     | GreKey Word32
     | NatType Word8
     | InitiatorPackets Word64
     | ResponderPackets Word64
-    | ObservationDomainName String
+    | ObservationDomainName T.Text
     | SelectionSequenceId Word64
     | SelectorId Word64
     | InformationElementId Word16
@@ -330,22 +330,22 @@ module Network.Flow.V9.Fields
     | HashSelectedRangeMax Word64
     | HashDigestOutput Bool
     | HashInitialiserValue Word64
-    | SelectorName String
+    | SelectorName T.Text
     | UpperCILimit Double
     | LowerCILimit Double
     | ConfidenceLevel Double
     | InformationElementDataType Word8
-    | InformationElementDescription String
-    | InformationElementName String
+    | InformationElementDescription T.Text
+    | InformationElementName T.Text
     | InformationElementRangeBegin Word64
     | InformationElementRangeEnd Word64
     | InformationElementSemantics Word8
     | InformationElementUnits Word16
     | PrivateEnterpriseNumber Word32
     | VirtualStationInterfaceId BS.ByteString
-    | VirtualStationInterfaceName String
+    | VirtualStationInterfaceName T.Text
     | VirtualStationUUID BS.ByteString
-    | VirtualStationName String
+    | VirtualStationName T.Text
     | Layer2SegmentId Word64
     | Layer2OctetDeltaCount Word64
     | Layer2OctetTotalCount Word64
@@ -366,10 +366,10 @@ module Network.Flow.V9.Fields
     | IngressInterfaceType Word32
     | EgressInterfaceType Word32
     | RtpSequenceNumber Word16
-    | UserName String
-    | ApplicationCategoryName String
-    | ApplicationSubCategoryName String
-    | ApplicationGroupName String
+    | UserName T.Text
+    | ApplicationCategoryName T.Text
+    | ApplicationSubCategoryName T.Text
+    | ApplicationGroupName T.Text
     | OriginalFlowsPresent Word64
     | OriginalFlowsInitiated Word64
     | OriginalFlowsCompleted Word64
@@ -441,13 +441,13 @@ module Network.Flow.V9.Fields
     | MibIndexIndicator Word64
     | MibCaptureTimeSemantics Word8
     | MibContextEngineID BS.ByteString
-    | MibContextName String
-    | MibObjectName String
-    | MibObjectDescription String
-    | MibObjectSyntax String
-    | MibModuleName String
-    | MobileIMSI String
-    | MobileMSISDN String
+    | MibContextName T.Text
+    | MibObjectName T.Text
+    | MibObjectDescription T.Text
+    | MibObjectSyntax T.Text
+    | MibModuleName T.Text
+    | MobileIMSI T.Text
+    | MobileMSISDN T.Text
     | HttpStatusCode Word16
     | OtherField Word16 BS.ByteString
     deriving (Show, Eq)
@@ -919,10 +919,10 @@ module Network.Flow.V9.Fields
                           Right v -> f v
 
 
-  instance DecodeAs String where
+  instance DecodeAs T.Text where
     decodeAs fid f bs = case decodeUtf8' bs of
                           Left _e -> OtherField fid bs
-                          Right v -> f (T.unpack v)
+                          Right v -> f v
 
 
   instance DecodeAs Double where
