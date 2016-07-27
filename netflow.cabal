@@ -34,7 +34,7 @@ Executable nf
 Library
   exposed-modules:     Network.Flow.Receive
                      , Network.Flow.V9
-                     , Network.Flow.V9.Decode
+  other-modules:       Network.Flow.V9.Flows
                      , Network.Flow.V9.Fields
                      , Data.MAC
   default-language:    Haskell2010

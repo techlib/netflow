@@ -1,6 +1,6 @@
 {-|
-Module      :  Network.Flow.V9.Decode
-Description :  Stateful Template-Based Decoding
+Module      :  Network.Flow.V9.Flows
+Description :  Flow Decoding
 Copyright   :  (c) Jan Dvořák
 License     :  MIT
 
@@ -12,12 +12,11 @@ Portability :  non-portable (ghc)
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Network.Flow.V9.Decode
+module Network.Flow.V9.Flows
 ( Flowset(..)
 , Template(..)
 , Type(..)
 , Flow(..)
-, Field(..)
 , decodeFlowset
 ) where
   import BasePrelude

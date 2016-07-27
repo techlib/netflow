@@ -17,6 +17,7 @@ module Network.Flow.V9
 ( Record(..)
 , Flowset(..)
 , Flow(..)
+, Field(..)
 , DecodeException(..)
 , decodeRecords
 , decodeFlows
@@ -28,7 +29,8 @@ module Network.Flow.V9
   import Data.Serialize.Get
   import Pipes
 
-  import Network.Flow.V9.Decode
+  import Network.Flow.V9.Flows
+  import Network.Flow.V9.Fields
 
 
   data DecodeException = DecodeException String
