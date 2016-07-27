@@ -14,7 +14,7 @@ Portability :  non-portable (ghc)
 
 module Main (main)
 where
-  import BasePrelude hiding (getArgs)
+  import BasePrelude hiding (getArgs, yield)
 
   {-
   import Data.ByteString (ByteString)
@@ -23,9 +23,11 @@ where
 
   import System.Console.GetOpt
   import System.Environment
+  import Data.Aeson
   import Pipes
 
-  import GHC.IO.Exception as Exn
+  --import qualified GHC.IO.Exception as Exn
+  import qualified Data.ByteString.Lazy as BL
 
   import Network.Flow.Receive
   import Network.Flow.V9
@@ -96,24 +98,22 @@ where
 
   mainCapture :: Options -> IO ()
   mainCapture opt = withReceiver (host opt) (port opt) receive
-    where receive sock = runEffect $ datagrams sock >-> decodeRecords >-> decodeFlows >-> showItems
+    where receive sock = runEffect $ datagrams sock
+                                     >-> decodeRecords
+                                     >-> decodeFlows
+                                     >-> jsonEncode
+                                     >-> putLines
 
 
-  showItems :: (Show a) => Consumer a IO ()
-  showItems = do
-    -- Consume a single item.
+  jsonEncode :: (ToJSON a) => Pipe a BL.ByteString IO ()
+  jsonEncode = forever $ await >>= (yield . encode)
+
+
+  putLines :: Consumer BL.ByteString IO ()
+  putLines = forever $ do
     item <- await
-
-    -- Try to output it.
-    x <- lift $ try $ putStrLn (show item)
-
-    case x of
-      -- Gracefully terminate if we got a broken pipe error.
-      Left e@(Exn.IOError {Exn.ioe_type = t}) ->
-        lift $ unless (t == Exn.ResourceVanished) $ throwIO e
-
-      -- Otherwise loop...
-      Right () -> showItems
+    lift $ BL.putStr item
+    lift $ BL.putStr "\n"
 
 
   main :: IO ()

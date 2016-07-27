@@ -30,6 +30,7 @@ Executable nf
                      , cereal
                      , pipes
                      , iproute
+                     , aeson
 
 Library
   exposed-modules:     Network.Flow.Receive
@@ -52,6 +53,9 @@ Library
                      , iproute
                      , transformers
                      , containers
+                     , unordered-containers
+                     , base64-bytestring
+                     , aeson
 
 Test-Suite spec
   default-language:    Haskell2010

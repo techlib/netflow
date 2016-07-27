@@ -11,6 +11,8 @@ Portability :  non-portable (ghc)
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Network.Flow.V9.Flows
 ( Flowset(..)
@@ -22,6 +24,7 @@ module Network.Flow.V9.Flows
   import BasePrelude
   import Data.ByteString (ByteString)
   import Data.Serialize.Get
+  import Data.Aeson
 
   import Network.Flow.V9.Fields
 
@@ -115,6 +118,15 @@ module Network.Flow.V9.Flows
   getField (Type number size) = do
     bytes <- getBytes (fromIntegral size)
     return (decodeField number bytes)
+
+
+  instance ToJSON Flow where
+    toJSON f = object
+      [ "time"     .= flowTime f
+      , "uptime"   .= flowUptime f
+      , "template" .= flowTemplate f
+      , "scope"    .= flowScope f
+      , "fields"   .= toJSON (flowFields f) ]
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
