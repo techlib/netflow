@@ -11,22 +11,18 @@ Portability :  non-portable (ghc)
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main (main)
 where
   import BasePrelude hiding (getArgs, yield)
 
-  {-
-  import Data.ByteString (ByteString)
-  import Network.Socket
-  -}
-
+  import Database.PostgreSQL.Simple
   import System.Console.GetOpt
   import System.Environment
   import Data.Aeson
   import Pipes
 
-  --import qualified GHC.IO.Exception as Exn
   import qualified Data.ByteString.Lazy as BL
 
   import Network.Flow.Receive
@@ -36,7 +32,7 @@ where
   data Options
     = Options
       { func :: Options -> IO ()
-      , path :: Maybe String
+      , pgdb :: Maybe String
       , host :: String
       , port :: String }
 
@@ -44,7 +40,7 @@ where
   defaults :: Options
   defaults = Options
               { func = mainCapture
-              , path = Nothing
+              , pgdb = Nothing
               , host = "::"
               , port = "9800" }
 
@@ -61,15 +57,23 @@ where
 
     , Option "H" ["host"]
              (ReqArg (\host' opts -> opts { host = host' }) "::")
-             "Address of a local interface to receive datagrams on."
+             "Local address to receive flow datagrams"
 
     , Option "P" ["port"]
              (ReqArg (\port' opts -> opts { port = port' }) "9800")
-             "Local port to receive datagrams on."
+             "Local port to receive flow datagrams"
 
-    , Option "p" ["prefix"]
-             (ReqArg (\path' opts -> opts { path = Just path' }) "path")
-             "Prefix of output file names." ]
+    , Option "d" ["database"]
+             (ReqArg (\pgdb' opts -> opts { pgdb = Just pgdb' }) "dsn")
+             "PostgreSQL connection string" ]
+
+
+  main :: IO ()
+  main = do
+    args <- getArgs
+    opts <- parseOptions args
+
+    (func opts) opts
 
 
   parseOptions :: [String] -> IO Options
@@ -83,8 +87,12 @@ where
   mainHelp _opts = do
     prog <- getProgName
 
-    let header = "Usage: " <> prog <> " [--prefix path] [--host ::] [--port 9800]\n\
-                 \Capture NetFlow data and store them as plain text.\n\nOPTIONS:"
+    let header = "Usage: " <> prog <> " [--host ::] [--port 9800]\n\
+                 \Capture NetFlow data and dump them as JSON objects.\n\
+                 \\n\
+                 \Use `--database` to specify a PostgreSQL connection if you wish\n\
+                 \to store flows there instead. See the documentation for details.\n\n\
+                 \OPTIONS:"
 
     putStrLn $ usageInfo header options
     putStrLn "Report bugs to <helpdeskict@techlib.cz>."
@@ -97,12 +105,39 @@ where
 
 
   mainCapture :: Options -> IO ()
-  mainCapture opt = withReceiver (host opt) (port opt) receive
-    where receive sock = runEffect $ datagrams sock
-                                     >-> decodeRecords
-                                     >-> decodeFlows
-                                     >-> jsonEncode
-                                     >-> putLines
+  mainCapture opts = case (pgdb opts) of
+                       Nothing  -> mainCaptureJSON opts
+                       Just dsn -> mainCapturePG opts dsn
+
+
+  mainCaptureJSON :: Options -> IO ()
+  mainCaptureJSON opts = do
+    withReceiver (host opts) (port opts) $ \sock ->
+      runEffect $ datagrams sock
+              >-> decodeRecords
+              >-> decodeFlows
+              >-> jsonEncode
+              >-> putLines
+
+
+  mainCapturePG :: Options -> String -> IO ()
+  mainCapturePG opts dsn = do
+    conn <- connectPostgreSQL (fromString dsn)
+
+    withReceiver (host opts) (port opts) $ \sock ->
+      runEffect $ datagrams sock
+              >-> decodeRecords
+              >-> decodeFlows
+              >-> pgStore conn
+
+
+  pgStore :: Connection -> Consumer Flow IO ()
+  pgStore conn = forever $ do
+    (Flow time uptime _ _ scope fields) <- await
+
+    let q = "insert into flow (time, uptime, scope, fields) values (?, ?, ?, ?)"
+
+    liftIO $ execute conn q (time, uptime, scope, toJSON fields)
 
 
   jsonEncode :: (ToJSON a) => Pipe a BL.ByteString IO ()
@@ -114,14 +149,6 @@ where
     item <- await
     lift $ BL.putStr item
     lift $ BL.putStr "\n"
-
-
-  main :: IO ()
-  main = do
-    args <- getArgs
-    opts <- parseOptions args
-
-    (func opts) opts
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

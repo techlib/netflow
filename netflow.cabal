@@ -31,6 +31,7 @@ Executable nf
                      , pipes
                      , iproute
                      , aeson
+                     , postgresql-simple
 
 Library
   exposed-modules:     Network.Flow.Receive
