@@ -18,6 +18,7 @@ where
   import BasePrelude hiding (getArgs, yield)
 
   import Database.PostgreSQL.Simple
+  import Data.Time.Clock.POSIX
   import System.Console.GetOpt
   import System.Environment
   import Data.Aeson
@@ -135,9 +136,10 @@ where
   pgStore conn = forever $ do
     (Flow time uptime _ _ scope fields) <- await
 
+    let utcTime = posixSecondsToUTCTime $ fromIntegral time
     let q = "insert into flow (time, uptime, scope, fields) values (?, ?, ?, ?)"
 
-    liftIO $ execute conn q (time, uptime, scope, toJSON fields)
+    liftIO $ execute conn q (utcTime, uptime, scope, toJSON fields)
 
 
   jsonEncode :: (ToJSON a) => Pipe a BL.ByteString IO ()
