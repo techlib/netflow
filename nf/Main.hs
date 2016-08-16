@@ -12,12 +12,15 @@ Portability :  non-portable (ghc)
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Main (main)
 where
   import BasePrelude hiding (getArgs, yield)
 
   import Database.PostgreSQL.Simple
+  import Database.PostgreSQL.Simple.SqlQQ
+
   import Data.Time.Clock.POSIX
   import System.Console.GetOpt
   import System.Environment
@@ -137,7 +140,8 @@ where
     (Flow time uptime _ _ scope fields) <- await
 
     let utcTime = posixSecondsToUTCTime $ fromIntegral time
-    let q = "insert into flow (time, uptime, scope, fields) values (?, ?, ?, ?)"
+    let q = [sql| insert into flow (time, uptime, scope, fields)
+                  values (?, ?, ?, ?) |]
 
     liftIO $ execute conn q (utcTime, uptime, scope, toJSON fields)
 
