@@ -137,13 +137,21 @@ where
 
   pgStore :: Connection -> Consumer Flow IO ()
   pgStore conn = forever $ do
-    (Flow time uptime _ _ scope fields) <- await
+    -- Begin the transaction.
+    _ <- liftIO $ execute conn "begin" ()
 
-    let utcTime = posixSecondsToUTCTime $ fromIntegral time
-    let q = [sql| insert into flow (time, uptime, scope, fields)
-                  values (?, ?, ?, ?) |]
+    -- Insert next 100 rows.
+    replicateM_ 100 $ do
+      (Flow time uptime _ _ scope fields) <- await
 
-    liftIO $ execute conn q (utcTime, uptime, scope, toJSON fields)
+      let utcTime = posixSecondsToUTCTime $ fromIntegral time
+      let q = [sql| insert into flow (time, uptime, scope, fields)
+                    values (?, ?, ?, ?) |]
+
+      liftIO $ execute conn q (utcTime, uptime, scope, toJSON fields)
+
+    -- Commit, loop.
+    liftIO $ execute conn "commit" ()
 
 
   jsonEncode :: (ToJSON a) => Pipe a BL.ByteString IO ()
