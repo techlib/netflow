@@ -29,6 +29,7 @@ Executable nf
                      , base-prelude
                      , cereal
                      , pipes
+                     , pipes-concurrency
                      , iproute
                      , aeson
                      , postgresql-simple

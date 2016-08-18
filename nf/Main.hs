@@ -26,6 +26,7 @@ where
   import System.Environment
   import Data.Aeson
   import Pipes
+  import Pipes.Concurrent
 
   import qualified Data.ByteString.Lazy as BL
 
@@ -128,30 +129,56 @@ where
   mainCapturePG opts dsn = do
     conn <- connectPostgreSQL (fromString dsn)
 
-    withReceiver (host opts) (port opts) $ \sock ->
-      runEffect $ datagrams sock
-              >-> decodeRecords
-              >-> decodeFlows
-              >-> pgStore conn
+    withReceiver (host opts) (port opts) $ \sock -> do
+      (output, input) <- spawn (bounded 1000)
+
+      _ <- forkIO $
+        runEffect $ datagrams sock
+                >-> decodeRecords
+                >-> decodeFlows
+                >-> wrapInJust
+                >-> toOutput output
+
+      _ <- forkIO $
+        runEffect $ tick 1000000 >-> toOutput output
+
+      runEffect $ fromInput input >-> pgStore conn
 
 
-  pgStore :: Connection -> Consumer Flow IO ()
-  pgStore conn = forever $ do
+  tick :: Int -> Producer (Maybe a) IO ()
+  tick t = forever $ do
+    lift $ threadDelay t
+    yield Nothing
+
+
+  wrapInJust :: Pipe a (Maybe a) IO ()
+  wrapInJust = forever $ do
+    x <- await
+    yield $ Just x
+
+
+  pgStore :: Connection -> Consumer (Maybe Flow) IO ()
+  pgStore conn = do
     -- Begin the transaction.
-    _ <- liftIO $ execute conn "begin" ()
+    _ <- liftIO $ execute_ conn "begin"
 
-    -- Insert next 100 rows.
-    replicateM_ 100 $ do
-      (Flow time uptime _ _ scope fields) <- await
+    forever $ do
+      -- Wait for either a flow or a cork signal.
+      mf <- await
 
-      let utcTime = posixSecondsToUTCTime $ fromIntegral time
-      let q = [sql| insert into flow (time, uptime, scope, fields)
-                    values (?, ?, ?, ?) |]
+      case mf of
+        Just (Flow time uptime _ _ scope fields) -> do
+          let utcTime = posixSecondsToUTCTime $ fromIntegral time
+          _ <- liftIO $ execute conn
+                           [sql| insert into flow (time, uptime, scope, fields)
+                                 values (?, ?, ?, ?) |]
+                           (utcTime, uptime, scope, toJSON fields)
+          return ()
 
-      liftIO $ execute conn q (utcTime, uptime, scope, toJSON fields)
-
-    -- Commit, loop.
-    liftIO $ execute conn "commit" ()
+        Nothing -> do
+          _ <- liftIO $ execute_ conn [sql| commit |]
+          _ <- liftIO $ execute_ conn [sql| begin |]
+          return ()
 
 
   jsonEncode :: (ToJSON a) => Pipe a BL.ByteString IO ()
