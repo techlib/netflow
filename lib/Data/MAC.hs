@@ -15,6 +15,8 @@ module Data.MAC
 where
   import BasePrelude
 
+  import Data.Aeson
+
 
   newtype MAC = MAC
     { macOctets :: (Word8, Word8, Word8, Word8, Word8, Word8) }
@@ -28,6 +30,10 @@ where
   toMAC :: [Word8] -> MAC
   toMAC [a, b, c, d, e, f] = MAC (a, b, c, d, e, f)
   toMAC _ = error "invalid number of MAC octets"
+
+
+  instance ToJSON MAC where
+    toJSON = toJSON . show
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

@@ -46,7 +46,7 @@ module Network.Flow.Receive
     (addr:_) <- getAddrInfo Nothing (Just host) (Just port)
 
     -- Run the body and then close the socket.
-    bracket (udpReceiver addr) sClose body
+    bracket (udpReceiver addr) close body
 
 
   -- |

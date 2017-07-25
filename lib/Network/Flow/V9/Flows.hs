@@ -21,8 +21,10 @@ module Network.Flow.V9.Flows
 , Flow(..)
 , decodeFlowset
 ) where
-  import BasePrelude
+  import BasePrelude hiding (union, empty)
+
   import Data.ByteString (ByteString)
+  import Data.HashMap.Lazy (union, empty)
   import Data.Serialize.Get
   import Data.Aeson
 
@@ -59,7 +61,7 @@ module Network.Flow.V9.Flows
     , flowSource   :: !Word32
     , flowTemplate :: !Word16
     , flowScope    :: Word
-    , flowFields   :: [Field] }
+    , flowFields   :: Object }
     deriving (Show)
 
 
@@ -98,26 +100,26 @@ module Network.Flow.V9.Flows
       where matching t = (templateId' == templateId t)
 
 
-  decodeFields :: [Type] -> ByteString -> Maybe [Field]
+  decodeFields :: [Type] -> ByteString -> Maybe Object
   decodeFields fieldTypes body
     = case runGet (getFields fieldTypes) body of
         Left _e -> Nothing
         Right r -> Just r
 
 
-  getFields :: [Type] -> Get [Field]
-  getFields [] = return []
+  getFields :: [Type] -> Get Object
+  getFields [] = return empty
 
   getFields (fieldType:fieldTypes) = do
     field  <- getField fieldType
     fields <- getFields fieldTypes
-    return (field:fields)
+    return $ union field fields
 
 
-  getField :: Type -> Get Field
+  getField :: Type -> Get Object
   getField (Type number size) = do
     bytes <- getBytes (fromIntegral size)
-    return (decodeField number bytes)
+    return $ decodeField number bytes
 
 
   instance ToJSON Flow where
@@ -126,7 +128,7 @@ module Network.Flow.V9.Flows
       , "uptime"   .= flowUptime f
       , "template" .= flowTemplate f
       , "scope"    .= flowScope f
-      , "fields"   .= toJSON (flowFields f) ]
+      , "fields"   .= flowFields f ]
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
