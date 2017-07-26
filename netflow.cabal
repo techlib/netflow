@@ -33,6 +33,7 @@ Executable nf
                      , iproute
                      , aeson
                      , postgresql-simple
+                     , unordered-containers
 
 Library
   exposed-modules:     Network.Flow.Receive

@@ -24,11 +24,16 @@ where
   import Data.Time.Clock.POSIX
   import System.Console.GetOpt
   import System.Environment
+  import Data.ByteString.Lazy (ByteString)
   import Data.Aeson
+  import Data.HashSet (HashSet)
+  import Data.Text (Text)
   import Pipes
   import Pipes.Concurrent
 
-  import qualified Data.ByteString.Lazy as BL
+  import qualified Data.ByteString.Lazy as ByteString
+  import qualified Data.HashMap.Lazy as HashMap
+  import qualified Data.HashSet as HashSet
 
   import Network.Flow.Receive
   import Network.Flow.V9
@@ -39,7 +44,9 @@ where
       { func :: Options -> IO ()
       , pgdb :: Maybe String
       , host :: String
-      , port :: String }
+      , port :: String
+      , brief :: Bool
+      }
 
 
   defaults :: Options
@@ -47,7 +54,27 @@ where
               { func = mainCapture
               , pgdb = Nothing
               , host = "::"
-              , port = "9800" }
+              , port = "9800"
+              , brief = False
+              }
+
+
+  fieldsInBriefOutput :: HashSet Text
+  fieldsInBriefOutput =
+    HashSet.fromList
+      [ "FlowStartSysUpTime"
+      , "FlowEndSysUpTime"
+      , "SourceIPv6Address"
+      , "DestinationIPv6Address"
+      , "SourceIPv4Address"
+      , "DestinationIPv4Address"
+      , "PostNATSourceIPv4Address"
+      , "PostNATDestinationIPv4Address"
+      , "SourceTransportPort"
+      , "DestinationTransportPort"
+      , "PostNAPTSourceTransportPort"
+      , "PostNAPTDestinationTransportPort"
+      ]
 
 
   options :: [OptDescr (Options -> Options)]
@@ -60,6 +87,10 @@ where
              (NoArg (\opts -> opts { func = mainVersion }))
              "Show version information"
 
+    , Option "b" ["brief"]
+             (NoArg (\opts -> opts { brief = True }))
+             "Log only the very basic metadata"
+
     , Option "H" ["host"]
              (ReqArg (\host' opts -> opts { host = host' }) "::")
              "Local address to receive flow datagrams"
@@ -70,7 +101,8 @@ where
 
     , Option "d" ["database"]
              (ReqArg (\pgdb' opts -> opts { pgdb = Just pgdb' }) "dsn")
-             "PostgreSQL connection string" ]
+             "PostgreSQL connection string"
+    ]
 
 
   main :: IO ()
@@ -121,6 +153,7 @@ where
       runEffect $ datagrams sock
               >-> decodeRecords
               >-> decodeFlows
+              >-> (if (brief opts) then pruneFields else cat)
               >-> jsonEncode
               >-> putLines
 
@@ -136,13 +169,15 @@ where
         runEffect $ datagrams sock
                 >-> decodeRecords
                 >-> decodeFlows
+                >-> (if (brief opts) then pruneFields else cat)
                 >-> wrapInJust
                 >-> toOutput output
 
       _ <- forkIO $
         runEffect $ tick 1000000 >-> toOutput output
 
-      runEffect $ fromInput input >-> pgStore conn
+      runEffect $ fromInput input
+              >-> pgStore conn
 
 
   tick :: Int -> Producer (Maybe a) IO ()
@@ -176,20 +211,30 @@ where
           return ()
 
         Nothing -> do
-          _ <- liftIO $ execute_ conn [sql| commit |]
-          _ <- liftIO $ execute_ conn [sql| begin |]
+          _ <- liftIO $ execute_ conn "commit"
+          _ <- liftIO $ execute_ conn "begin"
           return ()
 
 
-  jsonEncode :: (ToJSON a) => Pipe a BL.ByteString IO ()
+  pruneFields :: (Monad m) => Pipe Flow Flow m ()
+  pruneFields = forever $ await >>= (yield . pruneFields')
+
+
+  pruneFields' :: Flow -> Flow
+  pruneFields' flow = flow {flowFields = filtered (flowFields flow)}
+    where filtered = HashMap.filterWithKey isWanted
+          isWanted k _ = HashSet.member k fieldsInBriefOutput
+
+
+  jsonEncode :: (ToJSON a) => Pipe a ByteString IO ()
   jsonEncode = forever $ await >>= (yield . encode)
 
 
-  putLines :: Consumer BL.ByteString IO ()
+  putLines :: Consumer ByteString IO ()
   putLines = forever $ do
     item <- await
-    lift $ BL.putStr item
-    lift $ BL.putStr "\n"
+    lift $ ByteString.putStr item
+    lift $ ByteString.putStr "\n"
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
