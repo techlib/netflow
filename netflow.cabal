@@ -16,7 +16,7 @@ description:
 
 Executable nf
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror -Wcompat
+  ghc-options:         -Wall -Werror -Wcompat -rtsopts
   hs-source-dirs:      nf
   main-is:             Main.hs
 
@@ -62,7 +62,7 @@ Library
 
 Test-Suite spec
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror -Wcompat
+  ghc-options:         -Wall -Werror -Wcompat -rtsopts
   type:	               exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
