@@ -20,6 +20,7 @@ module Network.Flow.V9.Flows
 , Type(..)
 , Flow(..)
 , decodeFlowset
+, Templates
 ) where
   import BasePrelude hiding (union, empty)
 
@@ -28,12 +29,17 @@ module Network.Flow.V9.Flows
   import Data.Serialize.Get
   import Data.Aeson
 
+  import qualified Data.HashMap.Strict as StrictHashMap
+
   import Network.Flow.V9.Fields
+
+
+  type Templates = StrictHashMap.HashMap Word16 Template
 
 
   data Flowset
     = TemplateFlowset
-      { flowsetTemplates  :: [Template] }
+      { flowsetTemplates  :: Templates }
     | DataFlowset
       { flowsetTemplateId :: !Word16
       , flowsetTime       :: !Word32
@@ -65,9 +71,9 @@ module Network.Flow.V9.Flows
     deriving (Show)
 
 
-  decodeFlowset :: Word32 -> Flowset -> [Template] -> (Maybe Flow, [Template])
+  decodeFlowset :: Word32 -> Flowset -> Templates -> (Maybe Flow, Templates)
   decodeFlowset _ (TemplateFlowset newTemplates) templates
-    = (Nothing, nubBy sameTemplateId (newTemplates <> templates))
+    = (Nothing, StrictHashMap.union newTemplates templates)
 
   decodeFlowset uptime (DataFlowset tid time source body) templates
     = case findTemplate templates tid of
@@ -89,15 +95,8 @@ module Network.Flow.V9.Flows
                 -> (Just (Flow time uptime source tid scope fields), templates)
 
 
-  sameTemplateId :: Template -> Template -> Bool
-  sameTemplateId x y = xno == yno
-    where xno = templateId (x :: Template)
-          yno = templateId (y :: Template)
-
-
-  findTemplate :: [Template] -> Word16 -> Maybe Template
-  findTemplate templates templateId' = find matching templates
-      where matching t = (templateId' == templateId t)
+  findTemplate :: Templates -> Word16 -> Maybe Template
+  findTemplate = flip StrictHashMap.lookup
 
 
   decodeFields :: [Type] -> ByteString -> Maybe Object

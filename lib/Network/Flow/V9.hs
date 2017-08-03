@@ -28,6 +28,8 @@ module Network.Flow.V9
   import Data.Serialize.Get
   import Pipes
 
+  import qualified Data.HashMap.Strict as StrictHashMap
+
   import Network.Flow.V9.Flows
 
 
@@ -99,19 +101,19 @@ module Network.Flow.V9
         return $ TemplateFlowset templates
 
 
-  getTemplates :: Get [Template]
+  getTemplates :: Get Templates
   getTemplates = label "getTemplates" $ do
       length' <- remaining
 
       if length' < 4 then
-        return []
+        return $ StrictHashMap.empty
       else do
         number' <- getWord16be
         count   <- getWord16be
         types'  <- getTypes count
         more    <- getTemplates
 
-        return $ Template number' 0 types' : more
+        return $ StrictHashMap.insert number' (Template number' 0 types') more
 
 
   getTypes :: (Integral a) => a -> Get [Type]
@@ -158,7 +160,11 @@ module Network.Flow.V9
         types'    <- getTypes (typesLen' `shiftR` 2)
 
         remaining >>= skip
-        return $ TemplateFlowset [Template template' (roll scope') types']
+
+        let template = Template template' (roll scope') types'
+        let templates = StrictHashMap.singleton template' template
+
+        return $ TemplateFlowset templates
 
 
   getFlowsetLength :: Get Int
@@ -168,10 +174,10 @@ module Network.Flow.V9
 
 
   decodeFlows :: Pipe Record Flow IO ()
-  decodeFlows = decodeFlows' []
+  decodeFlows = decodeFlows' StrictHashMap.empty
 
 
-  decodeFlows' :: [Template] -> Pipe Record Flow IO ()
+  decodeFlows' :: Templates -> Pipe Record Flow IO ()
   decodeFlows' templates = do
     -- Obtain new record to parse.
     (Record _ uptime _ _ _ flowsets) <- await
@@ -187,7 +193,7 @@ module Network.Flow.V9
     decodeFlows' templates'
 
 
-  decodeFlowsets :: Word32 -> [Flowset] -> [Template] -> ([Flow], [Template])
+  decodeFlowsets :: Word32 -> [Flowset] -> Templates -> ([Flow], Templates)
   decodeFlowsets _ [] templates = ([], templates)
 
   decodeFlowsets uptime (flowset:flowsets) templates
