@@ -115,7 +115,7 @@ where
 
   parseOptions :: [String] -> IO Options
   parseOptions argv = case getOpt Permute options argv of
-    (actions, [], [])   -> return $ foldl (.) id actions $ defaults
+    (actions, [], [])   -> return $ foldl' (.) id actions $ defaults
     (_, _, [])          -> die "Too many arguments."
     (_, _, (e:_))       -> die e
 
